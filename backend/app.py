@@ -20,9 +20,11 @@ def create_app(config_name=None):
     
     from routes.auth import auth_bp
     from routes.concepts import concepts_bp
+    from routes.challenges import challenges_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(concepts_bp, url_prefix='/api/concepts')
+    app.register_blueprint(challenges_bp, url_prefix='/api/challenges')
     
     # Configure CORS after blueprints are registered
     CORS(app, 
