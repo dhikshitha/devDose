@@ -20,6 +20,9 @@ class Config:
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@techlearningcompanion.com')
+    
+    # NewsAPI Configuration
+    NEWS_API_KEY = os.environ.get('NEWS_API_KEY', '')
 
 class DevelopmentConfig(Config):
     DEBUG = True
