@@ -35,7 +35,7 @@ def create_app(config_name=None):
     
     @app.route('/api/health')
     def health_check():
-        return jsonify({'status': 'healthy', 'message': 'Tech Learning Companion API is running'}), 200
+        return jsonify({'status': 'healthy', 'message': 'DevDose API is running'}), 200
     
     @app.errorhandler(404)
     def not_found(error):
