@@ -20,7 +20,8 @@ class ChallengeService:
                       user_id: int,
                       category_id: Optional[int] = None,
                       difficulty: Optional[str] = None,
-                      status: Optional[str] = None) -> List[Dict]:
+                      status: Optional[str] = None,
+                      search: Optional[str] = None) -> List[Dict]:
         """
         Get challenges with user progress
         """
@@ -31,6 +32,14 @@ class ChallengeService:
         
         if difficulty:
             query = query.filter_by(difficulty=difficulty)
+        
+        if search:
+            query = query.filter(
+                or_(
+                    Challenge.title.ilike(f'%{search}%'),
+                    Challenge.description.ilike(f'%{search}%')
+                )
+            )
         
         challenges = query.all()
         

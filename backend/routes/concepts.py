@@ -210,6 +210,37 @@ def get_user_stats():
         return jsonify({'error': 'Failed to fetch statistics'}), 500
 
 
+@concepts_bp.route('/completed', methods=['GET'])
+@jwt_required()
+def get_completed_concepts():
+    """Get all completed concepts for the user"""
+    try:
+        user_id = int(get_jwt_identity())
+        
+        # Get completed concepts with progress info
+        completed_concepts = UserProgress.query.filter_by(
+            user_id=user_id,
+            status='completed'
+        ).join(Concept).all()
+        
+        concepts_data = []
+        for progress in completed_concepts:
+            concept_dict = progress.concept.to_dict()
+            concept_dict['completed_at'] = progress.completed_at.isoformat() if progress.completed_at else None
+            concept_dict['rating'] = progress.rating
+            concept_dict['notes'] = progress.notes
+            concepts_data.append(concept_dict)
+        
+        return jsonify({
+            'concepts': concepts_data,
+            'total': len(concepts_data)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching completed concepts: {str(e)}")
+        return jsonify({'error': 'Failed to fetch completed concepts'}), 500
+
+
 # NewsAPI Integration Routes
 @concepts_bp.route('/news/fetch', methods=['POST'])
 @jwt_required()

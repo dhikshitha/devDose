@@ -22,12 +22,14 @@ def get_challenges():
         category_id = request.args.get('category_id', type=int)
         difficulty = request.args.get('difficulty')
         status = request.args.get('status')
+        search = request.args.get('search')
         
         challenges = challenge_service.get_challenges(
             user_id=user_id,
             category_id=category_id,
             difficulty=difficulty,
-            status=status
+            status=status,
+            search=search
         )
         
         return jsonify({
@@ -209,3 +211,46 @@ def get_user_challenge_stats():
     except Exception as e:
         logger.error(f"Error fetching challenge stats: {str(e)}")
         return jsonify({'error': 'Failed to fetch statistics'}), 500
+
+
+@challenges_bp.route('/completed', methods=['GET'])
+@jwt_required()
+def get_completed_challenges():
+    """Get all completed challenges for the user"""
+    try:
+        user_id = int(get_jwt_identity())
+        
+        # Get completed challenges
+        from models import UserChallengeProgress, ChallengeSubmission
+        
+        completed_challenges = UserChallengeProgress.query.filter_by(
+            user_id=user_id,
+            status='solved'
+        ).join(Challenge).all()
+        
+        challenges_data = []
+        for progress in completed_challenges:
+            challenge_dict = challenge_service.get_challenge_details(
+                challenge_id=progress.challenge_id,
+                user_id=user_id
+            )
+            challenge_dict['first_solved_at'] = progress.first_solved_at.isoformat() if progress.first_solved_at else None
+            challenge_dict['last_attempted_at'] = progress.last_attempted_at.isoformat() if progress.last_attempted_at else None
+            
+            # Get the successful submission code
+            if progress.best_submission_id:
+                best_submission = ChallengeSubmission.query.get(progress.best_submission_id)
+                if best_submission:
+                    challenge_dict['successful_code'] = best_submission.code
+                    challenge_dict['code_language'] = best_submission.language
+            
+            challenges_data.append(challenge_dict)
+        
+        return jsonify({
+            'challenges': challenges_data,
+            'total': len(challenges_data)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching completed challenges: {str(e)}")
+        return jsonify({'error': 'Failed to fetch completed challenges'}), 500
