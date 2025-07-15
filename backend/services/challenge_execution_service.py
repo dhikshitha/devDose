@@ -55,7 +55,12 @@ class CodeExecutor:
                 suffix=lang_config['extension'],
                 delete=False
             ) as code_file:
-                code_file.write(code)
+                # For Python, detect if we need to add function calls
+                if language == 'python':
+                    modified_code = self._prepare_python_code(code, test_input)
+                    code_file.write(modified_code)
+                else:
+                    code_file.write(code)
                 code_file_path = code_file.name
             
             # Create temporary file for input
@@ -128,10 +133,46 @@ class CodeExecutor:
     
     def _set_limits(self):
         """Set resource limits for subprocess (Unix only)"""
-        # Limit CPU time
-        resource.setrlimit(resource.RLIMIT_CPU, (5, 5))
-        # Limit memory (256MB)
-        resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))
+        try:
+            # Limit CPU time
+            resource.setrlimit(resource.RLIMIT_CPU, (5, 5))
+            # Limit memory - Note: RLIMIT_AS may not work properly on macOS
+            # Try RLIMIT_DATA instead for macOS compatibility
+            if hasattr(resource, 'RLIMIT_AS'):
+                try:
+                    resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))
+                except (ValueError, OSError):
+                    # Fall back to RLIMIT_DATA on macOS
+                    if hasattr(resource, 'RLIMIT_DATA'):
+                        resource.setrlimit(resource.RLIMIT_DATA, (256 * 1024 * 1024, 256 * 1024 * 1024))
+        except Exception as e:
+            # Log the error but don't fail - resource limits are optional
+            logger.warning(f"Could not set resource limits: {str(e)}")
+    
+    def _prepare_python_code(self, code: str, test_input: str) -> str:
+        """Prepare Python code for execution"""
+        # Detect common function patterns that need to be called
+        lines = code.strip().split('\n')
+        
+        # Check if code defines functions that need to be called
+        function_patterns = [
+            ('hello_world', 'result = hello_world()\nif result is not None: print(result)'),
+            ('sum_two_numbers', 'sum_two_numbers()'),
+            ('even_or_odd', 'even_or_odd()'),
+            ('factorial', 'n = int(input())\nprint(factorial(n))'),
+            ('fibonacci', 'n = int(input())\nprint(fibonacci(n))'),
+            ('reverse_string', 's = input()\nprint(reverse_string(s))'),
+        ]
+        
+        # Check if any function pattern matches
+        for func_name, call_code in function_patterns:
+            if f'def {func_name}' in code:
+                # Add the function call at the end
+                return code + '\n\n# Execute the function\n' + call_code
+        
+        # If no specific pattern matched but there's a def statement,
+        # assume the code handles its own execution
+        return code
 
 
 class ChallengeValidator:
